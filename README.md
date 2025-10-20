@@ -2,12 +2,6 @@
 
 A feature-rich, client-side To-Do list application inspired by Microsoft To-Do. This project is built with vanilla HTML, CSS, and JavaScript, focusing on a clean UI, dynamic functionality, and local data persistence.
 
-**Live Demo:** [Link to your live demo] ``
-
-> **Note:** Replace the line above with a screenshot of your finished application!
-
----
-
 ## ✨ Features
 
 - **Fully Responsive Design:** Looks and works great on mobile, tablet, and desktop devices.
