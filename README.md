@@ -2,28 +2,24 @@
 
 A feature-rich, client-side To-Do list application inspired by Microsoft To-Do. This project is built with vanilla HTML, CSS, and JavaScript, focusing on a clean UI, dynamic functionality, and local data persistence.
 
+**Live Demo:** [Link to your live demo] ``
+
+> **Note:** Replace the line above with a screenshot of your finished application!
+
+---
+
 ## ✨ Features
 
-This application comes with a comprehensive set of features to manage your tasks effectively:
-
-- **🎨 Dual Themes:** Seamlessly switch between a clean **Light Mode** and a sleek **Dark Mode**. Your preference is saved locally.
-- **↔️ Collapsible Sidebar:** Maximize your workspace by toggling the sidebar open or closed.
-- **✅ Core Task Management:**
-  - **Add** new tasks with a simple and intuitive input.
-  - **Complete** tasks by checking them off.
-  - **Delete** tasks with a smooth animation.
-- **🧠 Smart Views:**
-  - **My Day:** Add any task to a special "My Day" list for daily focus.
-  - **Important:** Mark tasks with a star to see them all in one place.
-  - **Planned:** Assign due dates to tasks and view them in the "Planned" section.
-- **📂 Custom Lists:**
-  - Create your own custom lists for different projects or categories.
-  - Delete custom lists with a simple right-click.
-- **🔍 Live Search:** Instantly find any task with a powerful search bar that filters and **highlights** matching text in real-time.
-- **💾 Local Storage Persistence:** All your tasks, lists, and settings are automatically saved in your browser's local storage.
-- **⚙️ User Settings:**
-  - Enable or disable a **confirmation dialog** before deleting tasks and lists.
-  - Theme selection panel.
+- **Fully Responsive Design:** Looks and works great on mobile, tablet, and desktop devices.
+- **Dual Themes:** Seamlessly switch between a clean **Light Mode** and a sleek **Dark Mode**.
+- **Advanced Task Management:** Add, complete, delete, set due dates, and mark tasks as important or part of "My Day."
+- **Smart & Custom Lists:** Organize tasks in smart views like "Important" and "Planned," or create your own custom, deletable lists.
+- **Dynamic UI:**
+  - Real-time task counts update automatically in the sidebar.
+  - Interactive loading animations for all data changes.
+  - A custom, professional confirmation modal for deletions.
+- **Live Search:** Instantly find any task with a search bar that filters and highlights matching text.
+- **Local Storage Persistence:** All tasks, lists, and settings are saved in the browser.
 
 ---
 
@@ -32,7 +28,7 @@ This application comes with a comprehensive set of features to manage your tasks
 This project was built using fundamental web technologies, without any external frameworks.
 
 - **HTML5**
-- **CSS3** (with CSS Variables for theming)
+- **CSS3** (with CSS Variables for theming & Media Queries for responsiveness)
 - **Vanilla JavaScript (ES6+)**
 - **Font Awesome** (for icons)
 
@@ -41,10 +37,6 @@ This project was built using fundamental web technologies, without any external 
 ## 🚀 Getting Started
 
 To get a local copy up and running, follow these simple steps.
-
-### Prerequisites
-
-All you need is a modern web browser that supports HTML5, CSS3, and JavaScript.
 
 ### Installation
 

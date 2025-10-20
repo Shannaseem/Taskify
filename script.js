@@ -8,6 +8,7 @@ document.addEventListener("DOMContentLoaded", () => {
   let activeView = "my-day";
 
   // --- DOM ELEMENTS ---
+  const loader = document.querySelector("#loader-overlay");
   const menuBtn = document.querySelector(".menu-btn");
   const sidebar = document.querySelector(".sidebar");
   const settingsBtn = document.querySelector("#settings-btn");
@@ -27,6 +28,10 @@ document.addEventListener("DOMContentLoaded", () => {
   const newListInput = document.querySelector("#new-list-input");
   const themeRadios = document.querySelectorAll('input[name="theme"]');
   const body = document.body;
+  const myDayCountSpan = document.querySelector("#my-day-count");
+  const importantCountSpan = document.querySelector("#important-count");
+  const plannedCountSpan = document.querySelector("#planned-count");
+  const assignedCountSpan = document.querySelector("#assigned-count");
 
   // --- DATA PERSISTENCE ---
   function saveData() {
@@ -42,21 +47,61 @@ document.addEventListener("DOMContentLoaded", () => {
       settings = { ...{ confirmDelete: true }, ...appData.settings };
     }
     if (lists.length === 0) {
-      lists.push({ id: Date.now(), name: "Tasks" });
+      lists.push({ id: Date.now(), name: "My Tasks" });
     }
     confirmDeleteToggle.checked = settings.confirmDelete;
   }
 
+  // --- LOADER CONTROL ---
+  function showLoader() {
+    loader.classList.remove("hidden");
+  }
+
+  function hideLoader() {
+    loader.classList.add("hidden");
+  }
+
   // --- CORE UI RENDERING ---
+
+  function updateTaskCounts() {
+    const myDayCount = tasks.filter((t) => !t.completed && t.myDay).length;
+    myDayCountSpan.textContent = myDayCount > 0 ? myDayCount : "";
+
+    const importantCount = tasks.filter(
+      (t) => !t.completed && t.isImportant
+    ).length;
+    importantCountSpan.textContent = importantCount > 0 ? importantCount : "";
+
+    const plannedCount = tasks.filter((t) => !t.completed && t.dueDate).length;
+    plannedCountSpan.textContent = plannedCount > 0 ? plannedCount : "";
+
+    const assignedCount = tasks.filter(
+      (t) => !t.completed && t.assignedTo === "me"
+    ).length;
+    assignedCountSpan.textContent = assignedCount > 0 ? assignedCount : "";
+  }
 
   function renderCustomLists() {
     customListsContainer.innerHTML = "";
-    lists.forEach((list) => {
+    lists.forEach((list, index) => {
       const listItem = document.createElement("li");
       listItem.classList.add("menu-item");
       listItem.dataset.listId = list.id;
       if (activeView === list.id) listItem.classList.add("active");
-      listItem.innerHTML = `<i class="item-icon fa-solid fa-list-ul"></i><span class="item-text">${list.name}</span>`;
+
+      const listTaskCount = tasks.filter(
+        (t) => !t.completed && t.listId === list.id
+      ).length;
+      const countDisplay = listTaskCount > 0 ? listTaskCount : "";
+      const iconClass = index === 0 ? "fa-house" : "fa-list-ul";
+
+      listItem.innerHTML = `
+        <div>
+          <i class="item-icon fa-solid ${iconClass}"></i>
+          <span class="item-text">${list.name}</span>
+        </div>
+        <span class="item-count">${countDisplay}</span>
+      `;
       customListsContainer.appendChild(listItem);
     });
   }
@@ -65,7 +110,6 @@ document.addEventListener("DOMContentLoaded", () => {
     taskListContainer.innerHTML = "";
     let viewFilteredTasks = [];
 
-    // Filter by Active View
     if (typeof activeView === "string") {
       switch (activeView) {
         case "my-day":
@@ -83,7 +127,7 @@ document.addEventListener("DOMContentLoaded", () => {
           viewFilteredTasks = tasks.filter((t) => t.assignedTo === "me");
           break;
         default:
-          viewFilteredTasks = [];
+          viewFilteredTasks = tasks;
       }
     } else if (typeof activeView === "number") {
       viewFilteredTasks = tasks.filter((t) => t.listId === activeView);
@@ -104,7 +148,11 @@ document.addEventListener("DOMContentLoaded", () => {
     }
     mainContent.classList.remove("empty-state");
 
-    searchFilteredTasks.forEach((task) => {
+    const sortedTasks = [...searchFilteredTasks].sort(
+      (a, b) => a.completed - b.completed
+    );
+
+    sortedTasks.forEach((task) => {
       const taskItem = document.createElement("li");
       taskItem.className = `task-item ${task.completed ? "completed" : ""} ${
         task.isImportant ? "important" : ""
@@ -158,47 +206,127 @@ document.addEventListener("DOMContentLoaded", () => {
 
   function updateUI() {
     const activeEl = document.querySelector(".menu-item.active");
-    listTitleText.textContent = activeEl
-      ? activeEl.querySelector(".item-text").textContent
-      : "To Do";
+    if (activeEl) {
+      const textEl = activeEl.querySelector(".item-text");
+      if (textEl) {
+        listTitleText.textContent = textEl.textContent;
+      }
+    } else {
+      listTitleText.textContent = "Taskify";
+    }
     renderCustomLists();
     renderTasks(searchBar.value.trim().toLowerCase());
+    updateTaskCounts();
   }
 
   // --- ACTIONS ---
 
+  function showConfirmationDialog(itemName) {
+    const modal = document.querySelector("#confirmation-modal-overlay");
+    const itemNameSpan = document.querySelector("#item-to-delete-name");
+    const confirmBtn = document.querySelector("#confirm-delete-btn");
+    const cancelBtn = document.querySelector("#cancel-delete-btn");
+
+    itemNameSpan.textContent = itemName;
+    modal.classList.remove("hidden");
+
+    return new Promise((resolve, reject) => {
+      cancelBtn.addEventListener(
+        "click",
+        () => {
+          modal.classList.add("hidden");
+          reject();
+        },
+        { once: true }
+      );
+      confirmBtn.addEventListener(
+        "click",
+        () => {
+          modal.classList.add("hidden");
+          resolve();
+        },
+        { once: true }
+      );
+    });
+  }
+
+  function showDatePicker(container, task) {
+    const picker = document.createElement("input");
+    picker.type = "date";
+    const today = new Date().toISOString().split("T")[0];
+    picker.setAttribute("min", today);
+    if (task.dueDate) picker.value = task.dueDate;
+    picker.style.opacity = 0;
+    picker.style.position = "absolute";
+    picker.style.width = "100%";
+    picker.style.height = "100%";
+    picker.addEventListener("change", () => {
+      task.dueDate = picker.value;
+      saveData();
+      updateUI();
+    });
+    picker.addEventListener("blur", () => picker.remove());
+    container.appendChild(picker);
+    try {
+      picker.showPicker();
+    } catch (error) {
+      console.error("Browser does not support showPicker()", error);
+    }
+  }
+
   function addTask() {
     const taskText = taskInput.value.trim();
     if (taskText === "") return;
-    const newTask = {
-      id: Date.now(),
-      text: taskText,
-      completed: false,
-      isImportant: activeView === "important",
-      myDay: activeView === "my-day",
-      assignedTo: activeView === "assigned" ? "me" : null,
-      dueDate: null,
-      listId: typeof activeView === "number" ? activeView : lists[0].id,
-    };
-    tasks.push(newTask);
-    taskInput.value = "";
-    saveData();
-    updateUI();
+
+    showLoader();
+    setTimeout(() => {
+      const newTask = {
+        id: Date.now(),
+        text: taskText,
+        completed: false,
+        isImportant: activeView === "important",
+        myDay: activeView === "my-day",
+        assignedTo: activeView === "assigned" ? "me" : null,
+        dueDate: null,
+        listId: typeof activeView === "number" ? activeView : lists[0].id,
+      };
+      tasks.push(newTask);
+      taskInput.value = "";
+      saveData();
+      updateUI();
+      hideLoader();
+    }, 500);
   }
 
-  function deleteList(listId) {
-    if (
-      settings.confirmDelete &&
-      !confirm(
-        "Are you sure you want to delete this list and all its tasks? This cannot be undone."
-      )
-    )
-      return;
-    lists = lists.filter((l) => l.id !== listId);
-    tasks = tasks.filter((t) => t.listId !== listId);
-    if (activeView === listId) activeView = "my-day";
-    saveData();
-    updateUI();
+  async function deleteList(listId) {
+    const list = lists.find((l) => l.id === listId);
+    if (!list) return;
+
+    if (settings.confirmDelete) {
+      try {
+        await showConfirmationDialog(list.name);
+      } catch (error) {
+        return;
+      }
+    }
+
+    showLoader();
+    setTimeout(() => {
+      lists = lists.filter((l) => l.id !== listId);
+      tasks = tasks.filter((t) => t.listId !== listId);
+      if (activeView === listId) {
+        const firstList = document.querySelector(".sidebar-menu .menu-item");
+        if (firstList) {
+          firstList.click();
+        } else {
+          activeView = "my-day";
+          updateUI();
+        }
+      }
+      saveData();
+      updateUI();
+      hideLoader();
+    }, 500);
   }
 
   function showListContextMenu(event) {
@@ -206,16 +334,16 @@ document.addEventListener("DOMContentLoaded", () => {
     removeContextMenu();
     const listElement = event.target.closest(".menu-item[data-list-id]");
     if (!listElement) return;
-
     const listId = Number(listElement.dataset.listId);
+    const listIndex = lists.findIndex((l) => l.id === listId);
+    if (listIndex === 0) return;
+
     const menu = document.createElement("div");
     menu.className = "custom-context-menu";
     menu.innerHTML = `<button class="context-menu-item delete"><i class="fa-regular fa-trash-can"></i>Delete list</button>`;
-
     document.body.appendChild(menu);
     menu.style.top = `${event.clientY}px`;
     menu.style.left = `${event.clientX}px`;
-
     menu.querySelector(".delete").addEventListener("click", () => {
       deleteList(listId);
       removeContextMenu();
@@ -228,7 +356,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
   // --- EVENT HANDLERS ---
 
-  function handleTaskInteraction(event) {
+  async function handleTaskInteraction(event) {
     const taskItem = event.target.closest(".task-item");
     if (!taskItem) return;
     const taskId = Number(taskItem.dataset.id);
@@ -236,44 +364,72 @@ document.addEventListener("DOMContentLoaded", () => {
     if (!task) return;
 
     const target = event.target;
-    let shouldSave = true;
-    let shouldUpdate = true;
+    let action = null;
 
     if (target.matches(".task-checkbox")) {
-      task.completed = !task.completed;
+      action = () => {
+        task.completed = !task.completed;
+      };
     } else if (target.closest(".important-btn")) {
-      task.isImportant = !task.isImportant;
+      action = () => {
+        task.isImportant = !task.isImportant;
+      };
     } else if (target.closest(".add-to-day-btn")) {
-      task.myDay = !task.myDay;
+      action = () => {
+        task.myDay = !task.myDay;
+      };
     } else if (target.closest(".assign-to-me-btn")) {
-      task.assignedTo = task.assignedTo ? null : "me";
+      action = () => {
+        task.assignedTo = task.assignedTo ? null : "me";
+      };
+    } else if (target.closest(".set-date-btn")) {
+      showDatePicker(target.closest(".task-actions"), task);
+      return;
     } else if (target.closest(".delete-task-btn")) {
-      if (
-        settings.confirmDelete &&
-        !confirm("Are you sure you want to delete this task?")
-      )
-        return;
+      if (settings.confirmDelete) {
+        try {
+          await showConfirmationDialog(task.text);
+        } catch (error) {
+          return;
+        }
+      }
+      showLoader();
       taskItem.classList.add("removing");
-      taskItem.addEventListener("transitionend", () => {
-        tasks = tasks.filter((t) => t.id !== taskId);
-        saveData();
-        updateUI();
-      });
-      shouldSave = shouldUpdate = false;
-    } else {
-      shouldSave = shouldUpdate = false;
+      taskItem.addEventListener(
+        "transitionend",
+        () => {
+          tasks = tasks.filter((t) => t.id !== taskId);
+          saveData();
+          updateUI();
+          hideLoader();
+        },
+        { once: true }
+      );
+      return;
     }
 
-    if (shouldSave) saveData();
-    if (shouldUpdate) updateUI();
+    if (action) {
+      showLoader();
+      setTimeout(() => {
+        action();
+        saveData();
+        updateUI();
+        hideLoader();
+      }, 500);
+    }
   }
 
   // --- INITIALIZE LISTENERS & UI ---
 
-  // Sidebar & Settings Panel (FIXED)
-  menuBtn.addEventListener("click", () =>
-    sidebar.classList.toggle("sidebar-collapsed")
-  );
+  // UPDATED: Menu button now handles both mobile and desktop
+  menuBtn.addEventListener("click", () => {
+    if (window.innerWidth <= 768) {
+      sidebar.classList.toggle("sidebar-open");
+    } else {
+      sidebar.classList.toggle("sidebar-collapsed");
+    }
+  });
+
   settingsBtn.addEventListener("click", (e) => {
     e.stopPropagation();
     settingsPanel.classList.toggle("active");
@@ -289,7 +445,15 @@ document.addEventListener("DOMContentLoaded", () => {
     ) {
       settingsPanel.classList.remove("active");
     }
-    removeContextMenu(); // Close context menu on any click
+    // Close mobile sidebar if clicking outside of it
+    if (
+      sidebar.classList.contains("sidebar-open") &&
+      !sidebar.contains(e.target) &&
+      !menuBtn.contains(e.target)
+    ) {
+      sidebar.classList.remove("sidebar-open");
+    }
+    removeContextMenu();
   });
 
   // App-specific listeners
@@ -299,20 +463,34 @@ document.addEventListener("DOMContentLoaded", () => {
   sidebar.addEventListener("click", (e) => {
     const clickedItem = e.target.closest(".menu-item");
     if (!clickedItem || clickedItem.classList.contains("active")) return;
-    document.querySelector(".menu-item.active")?.classList.remove("active");
+
+    const currentActive = document.querySelector(".menu-item.active");
+    if (currentActive) currentActive.classList.remove("active");
+
     clickedItem.classList.add("active");
     activeView = clickedItem.dataset.view
       ? clickedItem.dataset.view
       : Number(clickedItem.dataset.listId);
     updateUI();
+
+    // Close mobile sidebar after a selection
+    if (window.innerWidth <= 768) {
+      sidebar.classList.remove("sidebar-open");
+    }
   });
   customListsContainer.addEventListener("contextmenu", showListContextMenu);
   searchBar.addEventListener("input", updateUI);
+
   newListBtn.addEventListener("click", () => {
+    if (sidebar.classList.contains("sidebar-collapsed")) {
+      sidebar.classList.remove("sidebar-collapsed");
+    }
+
     newListBtn.style.display = "none";
     newListInput.style.display = "";
     newListInput.focus();
   });
+
   newListInput.addEventListener(
     "keydown",
     (e) => e.key === "Enter" && e.target.blur()
@@ -320,11 +498,19 @@ document.addEventListener("DOMContentLoaded", () => {
   newListInput.addEventListener("blur", () => {
     const listName = newListInput.value.trim();
     if (listName) {
-      const newList = { id: Date.now(), name: listName };
-      lists.push(newList);
-      activeView = newList.id;
-      saveData();
-      updateUI();
+      showLoader();
+      setTimeout(() => {
+        const newList = { id: Date.now(), name: listName };
+        lists.push(newList);
+
+        const currentActive = document.querySelector(".menu-item.active");
+        if (currentActive) currentActive.classList.remove("active");
+
+        activeView = newList.id;
+        saveData();
+        updateUI();
+        hideLoader();
+      }, 500);
     }
     newListInput.value = "";
     newListInput.style.display = "none";
@@ -339,14 +525,16 @@ document.addEventListener("DOMContentLoaded", () => {
   themeRadios.forEach((radio) =>
     radio.addEventListener("change", (e) => {
       body.setAttribute("data-theme", e.target.value);
-      // In a real app, you'd save this to settings object as well
     })
   );
 
   // --- INITIALIZATION ---
   function initialize() {
-    loadData();
-    updateUI();
+    setTimeout(() => {
+      loadData();
+      updateUI();
+      hideLoader();
+    }, 1000);
   }
 
   initialize();

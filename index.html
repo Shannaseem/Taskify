@@ -3,7 +3,7 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>To Do</title>
+    <title>Taskify</title>
     <link rel="icon" href="logo.png" type="image/png" />
     <link rel="stylesheet" href="style.css" />
     <link
@@ -13,6 +13,23 @@
   </head>
   <body>
     <div class="app-container">
+      <div id="loader-overlay">
+        <div class="lds-spinner">
+          <div></div>
+          <div></div>
+          <div></div>
+          <div></div>
+          <div></div>
+          <div></div>
+          <div></div>
+          <div></div>
+          <div></div>
+          <div></div>
+          <div></div>
+          <div></div>
+        </div>
+      </div>
+
       <header class="header">
         <div class="header-left">
           <button class="menu-btn">☰</button>
@@ -37,24 +54,37 @@
         <nav class="sidebar">
           <ul class="sidebar-menu">
             <li class="menu-item active" data-view="my-day">
-              <i class="item-icon fa-solid fa-sun"></i>
-              <span class="item-text">My Day</span>
+              <div>
+                <i class="item-icon fa-solid fa-sun"></i>
+                <span class="item-text">My Day</span>
+              </div>
+              <span class="item-count" id="my-day-count"></span>
             </li>
             <li class="menu-item" data-view="important">
-              <i class="item-icon fa-regular fa-star"></i>
-              <span class="item-text">Important</span>
+              <div>
+                <i class="item-icon fa-regular fa-star"></i>
+                <span class="item-text">Important</span>
+              </div>
+              <span class="item-count" id="important-count"></span>
             </li>
             <li class="menu-item" data-view="planned">
-              <i class="item-icon fa-solid fa-calendar-check"></i>
-              <span class="item-text">Planned</span>
+              <div>
+                <i class="item-icon fa-solid fa-calendar-check"></i>
+                <span class="item-text">Planned</span>
+              </div>
+              <span class="item-count" id="planned-count"></span>
             </li>
             <li class="menu-item" data-view="assigned">
-              <i class="item-icon fa-solid fa-user"></i>
-              <span class="item-text">Assigned to me</span>
+              <div>
+                <i class="item-icon fa-solid fa-user"></i>
+                <span class="item-text">Assigned to me</span>
+              </div>
+              <span class="item-count" id="assigned-count"></span>
             </li>
           </ul>
           <hr class="separator" />
           <ul id="custom-lists-container" class="sidebar-menu"></ul>
+          <hr class="separator" />
           <div class="new-list-section">
             <input
               type="text"
@@ -117,7 +147,60 @@
           <span class="slider"></span>
         </label>
       </div>
+
+      <div class="settings-section">
+        <h4>About</h4>
+        <ul class="settings-links">
+          <li><a href="#">Privacy and cookies</a></li>
+          <li><a href="#">Export your info</a></li>
+          <li><a href="#">Third Party Notices</a></li>
+        </ul>
+      </div>
+
+      <div class="app-info">
+        <img src="logo.png" alt="Taskify Logo" class="app-info-logo" />
+        <div class="app-info-text">
+          <p><strong>Taskify</strong></p>
+          <p>Copyright © 2025 Shannaseem</p>
+          <p>All rights reserved</p>
+          <p>Version 1.0.0</p>
+        </div>
+      </div>
+
+      <div class="settings-section">
+        <h4>Connect</h4>
+        <ul class="settings-links">
+          <li>
+            <a href="#"
+              ><i class="fa-brands fa-twitter"></i> Follow us on Twitter</a
+            >
+          </li>
+          <li>
+            <a href="#"
+              ><i class="fa-brands fa-facebook"></i> Like us on Facebook</a
+            >
+          </li>
+          <li>
+            <a href="#"><i class="fa-solid fa-heart"></i> Spread the word</a>
+          </li>
+        </ul>
+      </div>
     </div>
+
+    <div id="confirmation-modal-overlay" class="hidden">
+      <div class="confirmation-modal">
+        <p>
+          <strong>"<span id="item-to-delete-name"></span>"</strong> will be
+          permanently deleted.
+        </p>
+        <small>You won't be able to undo this action.</small>
+        <div class="modal-buttons">
+          <button id="cancel-delete-btn">Cancel</button>
+          <button id="confirm-delete-btn">Delete</button>
+        </div>
+      </div>
+    </div>
+
     <script src="script.js"></script>
   </body>
 </html>
