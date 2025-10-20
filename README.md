@@ -11,15 +11,15 @@ A feature-rich, client-side To-Do list application inspired by Microsoft To-Do. 
 ## ✨ Features
 
 - **Fully Responsive Design:** Looks and works great on mobile, tablet, and desktop devices.
-- **Dual Themes:** Seamlessly switch between a clean **Light Mode** and a sleek **Dark Mode**.
-- **Advanced Task Management:** Add, complete, delete, set due dates, and mark tasks as important or part of "My Day."
-- **Smart & Custom Lists:** Organize tasks in smart views like "Important" and "Planned," or create your own custom, deletable lists.
+- **🎨 Dual Themes:** Seamlessly switch between a clean **Light Mode** and a sleek **Dark Mode**.
+- **🚀 Advanced Task Management:** Add, complete, delete, set due dates, and mark tasks as important or part of "My Day."
+- **📂 Smart & Custom Lists:** Organize tasks in smart views like "Important" and "Planned," or create your own custom, deletable lists.
 - **Dynamic UI:**
   - Real-time task counts update automatically in the sidebar.
-  - Interactive loading animations for all data changes.
+  - Interactive loading animations appear for all data-changing actions.
   - A custom, professional confirmation modal for deletions.
-- **Live Search:** Instantly find any task with a search bar that filters and highlights matching text.
-- **Local Storage Persistence:** All tasks, lists, and settings are saved in the browser.
+- **🔍 Live Search:** Instantly find any task with a search bar that filters and highlights matching text.
+- **💾 Local Storage Persistence:** All tasks, lists, and settings are automatically saved in the browser.
 
 ---
 
