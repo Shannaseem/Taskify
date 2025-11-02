@@ -1,22 +1,157 @@
-Taskify 📝 (Full-Stack)Taskify is a feature-rich, full-stack To-Do list application inspired by Microsoft To-Do. This project uses a Vanilla JavaScript frontend and a powerful FastAPI (Python) backend with a PostgreSQL database for robust, persistent data storage.✨ FeaturesFull-Stack Architecture: A decoupled frontend that communicates with a high-performance Python backend.Persistent Database: All user tasks and lists are saved permanently in a PostgreSQL database.REST API: A complete RESTful API built with FastAPI for creating, reading, updating, and deleting tasks and lists.Responsive Design: Looks and works great on mobile, tablet, and desktop.🎨 Dual Themes: Seamlessly switch between a clean Light Mode and a sleek Dark Mode.🚀 Advanced Task Management: Add, complete, delete, set due dates, and mark tasks as important or part of "My Day."🔍 Live Search: Instantly find any task with a search bar that filters and highlights matching text.🛠️ Built WithFrontendHTML5CSS3 (with CSS Variables for theming)Vanilla JavaScript (ES6+) (with fetch for API calls)BackendPython 3FastAPI (for the high-speed REST API)SQLAlchemy (as the ORM for database communication)PostgreSQL (as the SQL database)Uvicorn (as the ASGI server)🚀 Getting StartedTo get a local copy up and running, you must run both the backend server and the frontend client.PrerequisitesPython 3.10+PostgreSQL (and a tool like pgAdmin)Git1. Clone the Repositorygit clone [https://github.com/Shannaseem/Taskify.git](https://github.com/Shannaseem/Taskify.git)
-cd Taskify 2. Configure the BackendNavigate to the backend folder:cd backend
-Create a virtual environment:python -m venv venv
-.\venv\Scripts\Activate.ps1
-Install dependencies:pip install -r requirements.txt
-Create your database:Open pgAdmin or psql.Create a new, empty database named taskify_db.Set up environment variables:Rename the .env.example file (if one exists) or create a new file named .env in the backend folder.Add your database URL to it. It should look like this (replace with your own password):DATABASE_URL="postgresql://postgres:mysecretpassword@localhost:5432/taskify_db" 3. Run the ApplicationYou will need to open two terminals.In Terminal 1 (Run the Backend):# Navigate to the backend folder
+# Taskify (Full-Stack)
+
+Taskify is a feature-rich, full-stack To-Do list application inspired by Microsoft To-Do.  
+It combines a modern Vanilla JavaScript frontend with a powerful FastAPI (Python) backend and a PostgreSQL database for reliable, persistent data storage.
+
+## ✨ Features
+
+- 🧱 **Full-Stack Architecture** – Decoupled frontend communicating with a FastAPI backend.
+- 💾 **Persistent Database** – All tasks and lists are stored permanently in PostgreSQL.
+- 🌐 **REST API** – Full CRUD (Create, Read, Update, Delete) operations via FastAPI.
+- 📱 **Responsive Design** – Works great on desktop, tablet, and mobile.
+- 🎨 **Dual Themes** – Switch between Light and Dark mode seamlessly.
+- ✅ **Advanced Task Management** – Add, complete, delete, set due dates, mark as important, or add to "My Day."
+- 🔍 **Live Search** – Instantly find tasks with dynamic filtering and highlighting.
+
+## 🛠️ Tech Stack
+
+### Frontend
+
+- HTML5
+- CSS3 (with CSS Variables for theming)
+- Vanilla JavaScript (ES6+) — uses fetch() for API communication
+
+### Backend
+
+- Python 3
+- FastAPI (high-performance REST API)
+- SQLAlchemy (ORM for database communication)
+- PostgreSQL (SQL database)
+- Uvicorn (ASGI server)
+
+## 🚀 Getting Started
+
+Follow these steps to set up the project locally.
+
+### ✅ Prerequisites
+
+- Python 3.10+
+- PostgreSQL (and optionally pgAdmin)
+- Git
+
+### 1. Clone the Repository
+
+```bash
+git clone https://github.com/Shannaseem/Taskify.git
+cd Taskify
+```
+
+---
+
+### 2. Set Up the Backend
+
+Navigate to the backend folder:
+
+```bash
 cd backend
+```
 
-# Activate the virtual environment
+Create and activate a virtual environment:
 
+```bash
+python -m venv venv
 .\venv\Scripts\Activate.ps1
+```
 
-# Run the server
+Install the required dependencies:
 
+```bash
+pip install -r requirements.txt
+```
+
+#### Create the Database
+
+1. Open **pgAdmin** or use `psql`.
+2. Create a new, empty database named **taskify_db**.
+
+#### Configure Environment Variables
+
+In the `backend` folder, create a new file named **.env** (if it doesn’t exist).  
+Add your PostgreSQL connection string like this:
+
+```bash
+DATABASE_URL="postgresql://postgres:mysecretpassword@localhost:5432/taskify_db"
+```
+
+---
+
+### 3. Run the Application
+
+You’ll need **two terminals** — one for the backend, one for the frontend.
+
+#### 🖥️ Terminal 1 – Run the Backend
+
+```bash
+cd backend
+.\venv\Scripts\Activate.ps1
 uvicorn app.main:app --reload
-Your API is now running at http://127.0.0.1:8000.In Terminal 2 (Run the Frontend):# Navigate to the frontend folder
+```
+
+Your backend API will run at:  
+👉 **[http://127.0.0.1:8000](http://127.0.0.1:8000)**
+
+#### 🌐 Terminal 2 – Run the Frontend
+
+```bash
 cd frontend
-
-# Start a simple web server
-
 python -m http.server 5500
-Your frontend is now running at http://127.0.0.1:5500.Open http://127.0.0.1:5500 in your browser to use the app!
+```
+
+Your frontend will be available at:  
+👉 **[http://127.0.0.1:5500](http://127.0.0.1:5500)**
+
+---
+
+## 📂 Folder Structure
+
+Here’s the actual structure of your project:
+
+```
+Taskify/
+│
+├── backend/
+│   ├── app/
+│   │   ├── __pycache__/
+│   │   ├── routers/
+│   │   │   ├── __pycache__/
+│   │   │   ├── lists.py
+│   │   │   ├── tasks.py
+│   │   │   └── __init__.py
+│   │   ├── auth.py
+│   │   ├── crud.py
+│   │   ├── database.py
+│   │   ├── main.py
+│   │   ├── models.py
+│   │   └── schemas.py
+│   │
+│   ├── .env
+│   ├── requirements.txt
+│   └── venv/
+│
+├── frontend/
+│   ├── index.html
+│   ├── logo.png
+│   ├── script.js
+│   └── style.css
+│
+├── .gitignore
+└── README.md
+```
+
+## 👨‍💻 Author
+
+**Shan Naseem**  
+🎓 Student at UET Lahore | 💻 Full-Stack Developer
+
+🌐 [GitHub](https://github.com/Shannaseem)  
+💼 [LinkedIn](https://www.linkedin.com/in/shan-naseem/)
