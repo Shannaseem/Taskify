@@ -1,11 +1,14 @@
 document.addEventListener("DOMContentLoaded", () => {
+  // --- API URL ---
+  const API_BASE_URL = "http://127.0.0.1:8000";
+
   // --- STATE MANAGEMENT ---
-  let tasks = [];
-  let lists = [];
+  let tasks = []; // Will be populated from the API
+  let lists = []; // Will be populated from the API
   let settings = {
     confirmDelete: true,
   };
-  let activeView = "my-day";
+  let activeView = "my-day"; // Default view
 
   // --- DOM ELEMENTS ---
   const loader = document.querySelector("#loader-overlay");
@@ -33,23 +36,57 @@ document.addEventListener("DOMContentLoaded", () => {
   const plannedCountSpan = document.querySelector("#planned-count");
   const assignedCountSpan = document.querySelector("#assigned-count");
 
-  // --- DATA PERSISTENCE ---
-  function saveData() {
-    localStorage.setItem("todoApp", JSON.stringify({ tasks, lists, settings }));
-  }
+  // --- API & DATA SYNCING ---
 
-  function loadData() {
-    const savedData = localStorage.getItem("todoApp");
-    if (savedData) {
-      const appData = JSON.parse(savedData);
-      tasks = appData.tasks || [];
-      lists = appData.lists || [];
-      settings = { ...{ confirmDelete: true }, ...appData.settings };
+  /**
+   * Fetches all data from the backend and re-renders the entire UI.
+   * This is the new "single source of truth" function.
+   */
+  async function loadDataAndRender() {
+    showLoader();
+    try {
+      // 1. Fetch all lists, which include their nested tasks
+      const response = await fetch(`${API_BASE_URL}/lists/`);
+      if (!response.ok) throw new Error("Failed to fetch data from server.");
+
+      let loadedLists = await response.json();
+
+      // *** FIX 1: Handle Empty Database ***
+      // If the database is empty, create a default "My Tasks" list
+      if (loadedLists.length === 0) {
+        const newListResponse = await fetch(`${API_BASE_URL}/lists/`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ name: "My Tasks" }),
+        });
+        if (!newListResponse.ok)
+          throw new Error("Failed to create default list.");
+
+        // Add the new list to our local state to render
+        const defaultList = await newListResponse.json();
+        loadedLists = [defaultList];
+      }
+      // **********************************
+
+      // 2. Process the API data into our local state arrays
+      lists = loadedLists.map(({ id, name }) => ({ id, name }));
+      // Add '|| []' as a safeguard in case a list has no tasks property
+      tasks = loadedLists.flatMap((list) => list.tasks || []);
+
+      // 3. Load settings from localStorage (settings are not on the backend)
+      const savedSettings = localStorage.getItem("todoAppSettings"); // Use a new key
+      if (savedSettings) {
+        settings = { ...{ confirmDelete: true }, ...JSON.parse(savedSettings) };
+      }
+      confirmDeleteToggle.checked = settings.confirmDelete;
+    } catch (error) {
+      console.error("Error loading data:", error);
+      listTitleText.textContent = "Error loading tasks";
+    } finally {
+      // 4. Update the UI with the new data and hide the loader
+      updateUI();
+      hideLoader();
     }
-    if (lists.length === 0) {
-      lists.push({ id: Date.now(), name: "My Tasks" });
-    }
-    confirmDeleteToggle.checked = settings.confirmDelete;
   }
 
   // --- LOADER CONTROL ---
@@ -61,7 +98,7 @@ document.addEventListener("DOMContentLoaded", () => {
     loader.classList.add("hidden");
   }
 
-  // --- CORE UI RENDERING ---
+  // --- CORE UI RENDERING (No changes needed here) ---
 
   function updateTaskCounts() {
     const myDayCount = tasks.filter((t) => !t.completed && t.myDay).length;
@@ -90,9 +127,10 @@ document.addEventListener("DOMContentLoaded", () => {
       if (activeView === list.id) listItem.classList.add("active");
 
       const listTaskCount = tasks.filter(
-        (t) => !t.completed && t.listId === list.id
+        (t) => !t.completed && t.list_id === list.id
       ).length;
       const countDisplay = listTaskCount > 0 ? listTaskCount : "";
+      // Use the first list as "My Tasks" with a house icon
       const iconClass = index === 0 ? "fa-house" : "fa-list-ul";
 
       listItem.innerHTML = `
@@ -126,11 +164,11 @@ document.addEventListener("DOMContentLoaded", () => {
         case "assigned":
           viewFilteredTasks = tasks.filter((t) => t.assignedTo === "me");
           break;
-        default:
+        default: // "all" or any other string
           viewFilteredTasks = tasks;
       }
     } else if (typeof activeView === "number") {
-      viewFilteredTasks = tasks.filter((t) => t.listId === activeView);
+      viewFilteredTasks = tasks.filter((t) => t.list_id === activeView);
     }
 
     const searchFilteredTasks = searchQuery
@@ -219,7 +257,7 @@ document.addEventListener("DOMContentLoaded", () => {
     updateTaskCounts();
   }
 
-  // --- ACTIONS ---
+  // --- ACTIONS (MODIFIED FOR API) ---
 
   function showConfirmationDialog(itemName) {
     const modal = document.querySelector("#confirmation-modal-overlay");
@@ -250,21 +288,46 @@ document.addEventListener("DOMContentLoaded", () => {
     });
   }
 
-  function showDatePicker(container, task) {
+  /**
+   * Shows a date picker and updates the task on the backend when a date is selected.
+   */
+  async function showDatePicker(container, task) {
     const picker = document.createElement("input");
     picker.type = "date";
     const today = new Date().toISOString().split("T")[0];
     picker.setAttribute("min", today);
-    if (task.dueDate) picker.value = task.dueDate;
+    if (task.dueDate) {
+      picker.value = task.dueDate.split("T")[0]; // Format for date input
+    }
+
+    // --- Style picker to be invisible but clickable ---
     picker.style.opacity = 0;
     picker.style.position = "absolute";
     picker.style.width = "100%";
     picker.style.height = "100%";
-    picker.addEventListener("change", () => {
-      task.dueDate = picker.value;
-      saveData();
-      updateUI();
+    picker.style.cursor = "pointer";
+    picker.style.right = 0;
+    picker.style.top = 0;
+
+    picker.addEventListener("change", async () => {
+      const newDueDate = picker.value;
+      showLoader();
+      try {
+        const response = await fetch(`${API_BASE_URL}/tasks/${task.id}`, {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ dueDate: newDueDate }),
+        });
+        if (!response.ok) throw new Error("Failed to set due date.");
+        await loadDataAndRender();
+      } catch (error) {
+        console.error("Error setting due date:", error);
+        hideLoader();
+      } finally {
+        picker.remove();
+      }
     });
+
     picker.addEventListener("blur", () => picker.remove());
     container.appendChild(picker);
     try {
@@ -274,59 +337,86 @@ document.addEventListener("DOMContentLoaded", () => {
     }
   }
 
-  function addTask() {
+  /**
+   * Adds a new task by sending it to the backend.
+   */
+  async function addTask() {
     const taskText = taskInput.value.trim();
     if (taskText === "") return;
 
     showLoader();
-    setTimeout(() => {
-      const newTask = {
-        id: Date.now(),
+
+    // *** FIX 2: Wrap all logic in try/catch ***
+    try {
+      // Default to the first list (e.g., "My Tasks") if in a smart view
+      // This is now safe because loadDataAndRender ensures lists[0] exists
+      const currentListId =
+        typeof activeView === "number" ? activeView : lists[0].id;
+
+      const newTaskData = {
         text: taskText,
-        completed: false,
+        list_id: currentListId,
         isImportant: activeView === "important",
         myDay: activeView === "my-day",
-        assignedTo: activeView === "assigned" ? "me" : null,
-        dueDate: null,
-        listId: typeof activeView === "number" ? activeView : lists[0].id,
+        // assignedTo is not set on creation from here
       };
-      tasks.push(newTask);
+
+      const response = await fetch(`${API_BASE_URL}/tasks/`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(newTaskData),
+      });
+
+      if (!response.ok) throw new Error("Failed to add task.");
+
       taskInput.value = "";
-      saveData();
-      updateUI();
-      hideLoader();
-    }, 500);
+      await loadDataAndRender(); // Re-sync with server
+    } catch (error) {
+      console.error("Error adding task:", error);
+      hideLoader(); // This will now catch the error and hide the loader
+    }
+    // *******************************************
   }
 
+  /**
+   * Deletes a list from the backend.
+   */
   async function deleteList(listId) {
     const list = lists.find((l) => l.id === listId);
     if (!list) return;
+
+    // Prevent deleting the default list
+    const listIndex = lists.findIndex((l) => l.id === listId);
+    if (listIndex === 0) {
+      alert("You cannot delete the default 'My Tasks' list.");
+      return;
+    }
 
     if (settings.confirmDelete) {
       try {
         await showConfirmationDialog(list.name);
       } catch (error) {
-        return;
+        return; // User clicked "Cancel"
       }
     }
 
     showLoader();
-    setTimeout(() => {
-      lists = lists.filter((l) => l.id !== listId);
-      tasks = tasks.filter((t) => t.listId !== listId);
+    try {
+      const response = await fetch(`${API_BASE_URL}/lists/${listId}`, {
+        method: "DELETE",
+      });
+
+      if (!response.ok) throw new Error("Failed to delete list.");
+
+      // If we deleted the active list, switch to the default view
       if (activeView === listId) {
-        const firstList = document.querySelector(".sidebar-menu .menu-item");
-        if (firstList) {
-          firstList.click();
-        } else {
-          activeView = "my-day";
-          updateUI();
-        }
+        activeView = "my-day";
       }
-      saveData();
-      updateUI();
+      await loadDataAndRender(); // Re-sync
+    } catch (error) {
+      console.error("Error deleting list:", error);
       hideLoader();
-    }, 500);
+    }
   }
 
   function showListContextMenu(event) {
@@ -336,7 +426,7 @@ document.addEventListener("DOMContentLoaded", () => {
     if (!listElement) return;
     const listId = Number(listElement.dataset.listId);
     const listIndex = lists.findIndex((l) => l.id === listId);
-    if (listIndex === 0) return;
+    if (listIndex === 0) return; // Don't allow deleting the default list
 
     const menu = document.createElement("div");
     menu.className = "custom-context-menu";
@@ -354,8 +444,11 @@ document.addEventListener("DOMContentLoaded", () => {
     document.querySelector(".custom-context-menu")?.remove();
   }
 
-  // --- EVENT HANDLERS ---
+  // --- EVENT HANDLERS (MODIFIED FOR API) ---
 
+  /**
+   * Handles all clicks on a task item (check, star, delete, etc.)
+   */
   async function handleTaskInteraction(event) {
     const taskItem = event.target.closest(".task-item");
     if (!taskItem) return;
@@ -364,64 +457,76 @@ document.addEventListener("DOMContentLoaded", () => {
     if (!task) return;
 
     const target = event.target;
-    let action = null;
+    let actionPromise = null;
 
+    // --- Task Updates (PATCH requests) ---
     if (target.matches(".task-checkbox")) {
-      action = () => {
-        task.completed = !task.completed;
-      };
+      const updateData = { completed: !task.completed };
+      actionPromise = updateTaskOnApi(taskId, updateData);
     } else if (target.closest(".important-btn")) {
-      action = () => {
-        task.isImportant = !task.isImportant;
-      };
+      const updateData = { isImportant: !task.isImportant };
+      actionPromise = updateTaskOnApi(taskId, updateData);
     } else if (target.closest(".add-to-day-btn")) {
-      action = () => {
-        task.myDay = !task.myDay;
-      };
+      const updateData = { myDay: !task.myDay };
+      actionPromise = updateTaskOnApi(taskId, updateData);
     } else if (target.closest(".assign-to-me-btn")) {
-      action = () => {
-        task.assignedTo = task.assignedTo ? null : "me";
-      };
+      const updateData = { assignedTo: task.assignedTo ? null : "me" };
+      actionPromise = updateTaskOnApi(taskId, updateData);
     } else if (target.closest(".set-date-btn")) {
       showDatePicker(target.closest(".task-actions"), task);
-      return;
-    } else if (target.closest(".delete-task-btn")) {
+      return; // showDatePicker handles its own API call
+    }
+
+    // --- Task Deletion (DELETE request) ---
+    else if (target.closest(".delete-task-btn")) {
       if (settings.confirmDelete) {
         try {
           await showConfirmationDialog(task.text);
         } catch (error) {
-          return;
+          return; // User clicked "Cancel"
         }
       }
       showLoader();
-      taskItem.classList.add("removing");
-      taskItem.addEventListener(
-        "transitionend",
-        () => {
-          tasks = tasks.filter((t) => t.id !== taskId);
-          saveData();
-          updateUI();
-          hideLoader();
-        },
-        { once: true }
-      );
+      try {
+        const response = await fetch(`${API_BASE_URL}/tasks/${taskId}`, {
+          method: "DELETE",
+        });
+        if (!response.ok) throw new Error("Failed to delete task.");
+        await loadDataAndRender(); // Re-sync
+      } catch (error) {
+        console.error("Error deleting task:", error);
+        hideLoader();
+      }
       return;
     }
 
-    if (action) {
+    // --- Execute PATCH request if one was defined ---
+    if (actionPromise) {
       showLoader();
-      setTimeout(() => {
-        action();
-        saveData();
-        updateUI();
+      try {
+        const response = await actionPromise;
+        if (!response.ok) throw new Error("Failed to update task.");
+        await loadDataAndRender(); // Re-sync
+      } catch (error) {
+        console.error("Error updating task:", error);
         hideLoader();
-      }, 500);
+      }
     }
+  }
+
+  /**
+   * Helper function to send a PATCH request for a task update
+   */
+  function updateTaskOnApi(taskId, updateData) {
+    return fetch(`${API_BASE_URL}/tasks/${taskId}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(updateData),
+    });
   }
 
   // --- INITIALIZE LISTENERS & UI ---
 
-  // UPDATED: Menu button now handles both mobile and desktop
   menuBtn.addEventListener("click", () => {
     if (window.innerWidth <= 768) {
       sidebar.classList.toggle("sidebar-open");
@@ -445,7 +550,6 @@ document.addEventListener("DOMContentLoaded", () => {
     ) {
       settingsPanel.classList.remove("active");
     }
-    // Close mobile sidebar if clicking outside of it
     if (
       sidebar.classList.contains("sidebar-open") &&
       !sidebar.contains(e.target) &&
@@ -460,6 +564,7 @@ document.addEventListener("DOMContentLoaded", () => {
   addTaskBtn.addEventListener("click", addTask);
   taskInput.addEventListener("keydown", (e) => e.key === "Enter" && addTask());
   taskListContainer.addEventListener("click", handleTaskInteraction);
+
   sidebar.addEventListener("click", (e) => {
     const clickedItem = e.target.closest(".menu-item");
     if (!clickedItem || clickedItem.classList.contains("active")) return;
@@ -471,21 +576,23 @@ document.addEventListener("DOMContentLoaded", () => {
     activeView = clickedItem.dataset.view
       ? clickedItem.dataset.view
       : Number(clickedItem.dataset.listId);
+
+    // We don't need to call loadDataAndRender() here, just updateUI()
+    // The data is already in memory, we are just changing the filter.
     updateUI();
 
-    // Close mobile sidebar after a selection
     if (window.innerWidth <= 768) {
       sidebar.classList.remove("sidebar-open");
     }
   });
+
   customListsContainer.addEventListener("contextmenu", showListContextMenu);
-  searchBar.addEventListener("input", updateUI);
+  searchBar.addEventListener("input", () => updateUI()); // Just filter, don't reload
 
   newListBtn.addEventListener("click", () => {
     if (sidebar.classList.contains("sidebar-collapsed")) {
       sidebar.classList.remove("sidebar-collapsed");
     }
-
     newListBtn.style.display = "none";
     newListInput.style.display = "";
     newListInput.focus();
@@ -495,22 +602,32 @@ document.addEventListener("DOMContentLoaded", () => {
     "keydown",
     (e) => e.key === "Enter" && e.target.blur()
   );
-  newListInput.addEventListener("blur", () => {
+
+  newListInput.addEventListener("blur", async () => {
     const listName = newListInput.value.trim();
     if (listName) {
       showLoader();
-      setTimeout(() => {
-        const newList = { id: Date.now(), name: listName };
-        lists.push(newList);
+      try {
+        const response = await fetch(`${API_BASE_URL}/lists/`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ name: listName }),
+        });
+        if (!response.ok) {
+          // Handle duplicate list name error
+          if (response.status === 400) {
+            alert("A list with this name already exists."); // Simple alert for now
+          }
+          throw new Error("Failed to create list.");
+        }
 
-        const currentActive = document.querySelector(".menu-item.active");
-        if (currentActive) currentActive.classList.remove("active");
-
-        activeView = newList.id;
-        saveData();
-        updateUI();
+        const newList = await response.json();
+        activeView = newList.id; // Set the new list as the active view
+        await loadDataAndRender(); // Re-sync
+      } catch (error) {
+        console.error("Error creating new list:", error);
         hideLoader();
-      }, 500);
+      }
     }
     newListInput.value = "";
     newListInput.style.display = "none";
@@ -520,7 +637,7 @@ document.addEventListener("DOMContentLoaded", () => {
   // Settings listeners
   confirmDeleteToggle.addEventListener("change", (e) => {
     settings.confirmDelete = e.target.checked;
-    saveData();
+    localStorage.setItem("todoAppSettings", JSON.stringify(settings));
   });
   themeRadios.forEach((radio) =>
     radio.addEventListener("change", (e) => {
@@ -530,11 +647,8 @@ document.addEventListener("DOMContentLoaded", () => {
 
   // --- INITIALIZATION ---
   function initialize() {
-    setTimeout(() => {
-      loadData();
-      updateUI();
-      hideLoader();
-    }, 1000);
+    // Load all data from the API as soon as the page loads
+    loadDataAndRender();
   }
 
   initialize();
